@@ -78,6 +78,29 @@ interface Result { reco: string; compliance: string; metrics: Metrics; }
 
 export default function Home() {
   const [lang, setLang] = useState<Lang>('EN');
+
+  async function switchLang(l: Lang) {
+    setLang(l);
+    if (result) {
+      // Re-fetch với ngôn ngữ mới
+      setLoading(true);
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...form, lang: l.toLowerCase() }),
+        });
+        if (!res.ok) throw new Error('Server error');
+        const data = await res.json();
+        setResult(data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+  }
+  
   const t = T[lang];
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -136,7 +159,7 @@ export default function Home() {
           </div>
           <div className="flex gap-1.5">
             {LANGS.map(l => (
-              <button key={l} onClick={() => setLang(l)}
+              <button key={l} onClick={() => switchLang(l)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${lang === l ? 'bg-emerald-600 text-white border-emerald-600' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
                 {l}
               </button>
