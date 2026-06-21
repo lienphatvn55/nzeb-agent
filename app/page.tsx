@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { OptimizeResult } from '@/lib/harness/engine-client';
+import Logo from './components/Logo';
 import ParetoChart from './components/ParetoChart';
 import XAIPanel from './components/XAIPanel';
 import CompliancePanel from './components/CompliancePanel';
@@ -11,8 +12,9 @@ type Lang = typeof LANGS[number];
 
 const T: Record<Lang, Record<string, string>> = {
   EN: {
-    title: 'NZEB Deep-Retrofit Decision Platform',
-    subtitle: 'Agentic XAI · NSGA-III · QCVN 09:2017 + LEED v5 · HCMC Net-Zero 2050',
+    tag: 'AI Retrofit Decision Platform',
+    heroTitle: 'Deep-energy building retrofit, decided by an explainable AI agent.',
+    heroSub: 'An agentic platform that optimises EUI, life-cycle cost and whole-life carbon with NSGA-III, checks QCVN 09:2017 + LEED v5, and explains every recommendation — toward HCMC Net-Zero Carbon 2050.',
     s1: 'Building input', s2: 'Agent + NSGA-III', s3: 'Explainable decision',
     p1: 'Building profile', ltype: 'Building type', lyear: 'Year built',
     larea: 'Floor area (m²)', lfloors: 'Floors', leui: 'Measured EUI (kWh/m²/yr)',
@@ -26,8 +28,9 @@ const T: Record<Lang, Record<string, string>> = {
     oOffice: 'Office', oRes: 'Residential', oCom: 'Commercial', oMix: 'Mixed-use',
   },
   KO: {
-    title: 'NZEB 심층 리트로핏 의사결정 플랫폼',
-    subtitle: '에이전트 XAI · NSGA-III · QCVN 09:2017 + LEED v5 · HCMC 넷제로 2050',
+    tag: 'AI 리트로핏 의사결정 플랫폼',
+    heroTitle: '건물 심층 에너지 리트로핏, 설명가능한 AI 에이전트로 결정합니다.',
+    heroSub: 'NSGA-III로 EUI·생애주기 비용·전생애 탄소를 최적화하고, QCVN 09:2017 + LEED v5를 검증하며, 모든 권고를 설명하는 에이전트 플랫폼 — HCMC 넷제로 2050을 향하여.',
     s1: '건물 입력', s2: '에이전트 + NSGA-III', s3: '설명가능 의사결정',
     p1: '건물 정보', ltype: '건물 유형', lyear: '건축 연도',
     larea: '연면적 (m²)', lfloors: '층수', leui: '측정 EUI (kWh/m²/년)',
@@ -41,8 +44,9 @@ const T: Record<Lang, Record<string, string>> = {
     oOffice: '사무소', oRes: '주거', oCom: '상업', oMix: '복합용도',
   },
   VI: {
-    title: 'Nền tảng Hỗ trợ Ra quyết định Cải tạo sâu Năng lượng NZEB',
-    subtitle: 'AI Agent XAI · NSGA-III · QCVN 09:2017 + LEED v5 · TP.HCM Net-Zero 2050',
+    tag: 'Nền tảng Quyết định Cải tạo Năng lượng AI',
+    heroTitle: 'Cải tạo sâu năng lượng tòa nhà, quyết định bằng AI Agent giải thích được.',
+    heroSub: 'Nền tảng agentic tối ưu đồng thời EUI, chi phí vòng đời và carbon toàn vòng đời bằng NSGA-III, kiểm tra QCVN 09:2017 + LEED v5, và giải thích mọi khuyến nghị — hướng tới TP.HCM Net-Zero Carbon 2050.',
     s1: 'Nhập tòa nhà', s2: 'Agent + NSGA-III', s3: 'Quyết định giải thích được',
     p1: 'Hồ sơ tòa nhà', ltype: 'Loại công trình', lyear: 'Năm xây dựng',
     larea: 'Diện tích sàn (m²)', lfloors: 'Số tầng', leui: 'EUI đo được (kWh/m²/năm)',
@@ -64,6 +68,25 @@ interface AgentResponse {
   steps: number;
   model: string;
   optimization: OptimizeResult | null;
+}
+
+const METRIC_STYLE: Record<string, { chip: string; text: string }> = {
+  blue: { chip: 'bg-blue-50 text-blue-600', text: 'text-blue-700' },
+  indigo: { chip: 'bg-indigo-50 text-indigo-600', text: 'text-indigo-700' },
+  cyan: { chip: 'bg-cyan-50 text-cyan-600', text: 'text-cyan-700' },
+  amber: { chip: 'bg-amber-50 text-amber-600', text: 'text-amber-700' },
+};
+
+function Panel({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-white rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-5 fade-up">
+      <div className="flex items-center gap-2.5 mb-4">
+        <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-base">{icon}</span>
+        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
 }
 
 export default function Home() {
@@ -101,41 +124,59 @@ export default function Home() {
   const rec = opt ? opt.recommended : null;
   const baseEui = result?.building.eui_base ?? Number(form.beui);
 
-  const COLOR: Record<string, string> = {
-    emerald: 'text-emerald-600', blue: 'text-blue-600',
-    violet: 'text-violet-600', amber: 'text-amber-600',
-  };
+  const inputCls = 'w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 bg-slate-50/70 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:bg-white transition';
 
   return (
-    <main className="min-h-screen bg-slate-50 py-6 px-4">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+    <div className="min-h-screen">
+      {/* Sticky header */}
+      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 border-b border-slate-200/70">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          {/* To use the exact original artwork: save it to public/logo.png and
+              replace <Logo .../> with <img src="/logo.png" alt="liênnhã." className="h-9" /> */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-white text-lg font-bold">N</div>
-            <div>
-              <div className="font-semibold text-slate-900 text-base">{t.title}</div>
-              <div className="text-xs text-slate-500 mt-0.5">{t.subtitle}</div>
-            </div>
+            <Logo size={36} />
+            <span className="hidden sm:inline-block h-5 w-px bg-slate-200" />
+            <span className="hidden sm:inline text-xs font-medium text-slate-500">{t.tag}</span>
           </div>
-          <div className="flex gap-1.5">
+          <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1">
             {LANGS.map((l) => (
               <button key={l} onClick={() => switchLang(l)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${lang === l ? 'bg-emerald-600 text-white border-emerald-600' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${lang === l ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                 {l}
               </button>
             ))}
           </div>
         </div>
+      </header>
 
-        {/* Steps */}
-        <div className="flex mb-4 rounded-lg overflow-hidden border border-slate-200">
+      <main className="max-w-5xl mx-auto px-4 py-8">
+        {/* Hero (only before results) */}
+        {!result && (
+          <div className="text-center max-w-3xl mx-auto mb-10 fade-up">
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 ring-1 ring-blue-100 px-3 py-1 text-xs font-medium text-blue-700 mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              NSGA-III · XAI · QCVN 09:2017 · LEED v5 BD+C
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 leading-tight">
+              {t.heroTitle}
+            </h1>
+            <p className="mt-4 text-[15px] text-slate-500 leading-relaxed">{t.heroSub}</p>
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              {['EUI', 'LCC', 'WLC', 'Net-Zero 2050', 'TP.HCM'].map((b) => (
+                <span key={b} className="rounded-full bg-white ring-1 ring-slate-200 px-3 py-1 text-xs text-slate-600">{b}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step indicator */}
+        <div className="flex mb-6 rounded-2xl overflow-hidden ring-1 ring-slate-200/70 bg-white shadow-sm">
           {[t.s1, t.s2, t.s3].map((label, i) => (
-            <div key={i} className={`flex-1 flex items-center gap-2 px-4 py-2.5 text-xs font-medium transition-colors
-              ${step === i + 1 ? 'bg-emerald-50 text-emerald-700 border-b-2 border-emerald-600'
-              : step > i + 1 ? 'bg-emerald-50 text-emerald-600' : 'bg-white text-slate-400'}`}>
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold shrink-0
-                ${step >= i + 1 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+            <div key={i} className={`flex-1 flex items-center gap-2.5 px-4 py-3 text-xs font-medium transition-colors
+              ${step === i + 1 ? 'bg-blue-50/70 text-blue-700'
+              : step > i + 1 ? 'text-blue-600' : 'text-slate-400'}`}>
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0
+                ${step >= i + 1 ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-400'}`}>
                 {step > i + 1 ? '✓' : i + 1}
               </span>
               {label}
@@ -145,13 +186,15 @@ export default function Home() {
 
         {/* Input */}
         {!result && (
-          <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
-            <div className="text-sm font-medium text-slate-800 mb-4">🏢 {t.p1}</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="bg-white rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-6 fade-up">
+            <div className="flex items-center gap-2.5 mb-5">
+              <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">🏢</span>
+              <h2 className="text-sm font-semibold text-slate-800">{t.p1}</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
               <div>
-                <label className="block text-xs text-slate-500 font-medium mb-1">{t.ltype}</label>
-                <select value={form.btype} onChange={(e) => set('btype', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 bg-slate-50 focus:outline-none focus:border-emerald-500">
+                <label className="block text-xs text-slate-500 font-medium mb-1.5">{t.ltype}</label>
+                <select value={form.btype} onChange={(e) => set('btype', e.target.value)} className={inputCls}>
                   <option value="office">{t.oOffice}</option>
                   <option value="residential">{t.oRes}</option>
                   <option value="commercial">{t.oCom}</option>
@@ -161,86 +204,88 @@ export default function Home() {
               {[['byear', t.lyear], ['barea', t.larea], ['bfloors', t.lfloors],
                 ['beui', t.leui], ['bwall', t.lwall], ['bbudget', t.lbudget]].map(([k, label]) => (
                 <div key={k}>
-                  <label className="block text-xs text-slate-500 font-medium mb-1">{label}</label>
-                  <input type="number" value={form[k as keyof typeof form]} onChange={(e) => set(k, e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 bg-slate-50 focus:outline-none focus:border-emerald-500" />
+                  <label className="block text-xs text-slate-500 font-medium mb-1.5">{label}</label>
+                  <input type="number" value={form[k as keyof typeof form]} onChange={(e) => set(k, e.target.value)} className={inputCls} />
                 </div>
               ))}
             </div>
-            {error && <div className="text-red-500 text-xs mb-3">{error}</div>}
+            {error && <div className="text-red-600 text-xs mb-3 bg-red-50 rounded-lg px-3 py-2">{error}</div>}
             <button onClick={() => run()} disabled={loading}
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-medium rounded-lg text-sm transition-colors">
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-lg shadow-blue-600/20 transition-all">
               {loading ? `⏳ ${t.analyzing}` : `${t.btn} →`}
             </button>
           </div>
         )}
 
         {loading && !result && (
-          <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500">
-            ⏳ {t.analyzing}
+          <div className="bg-white rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-10 text-center mt-6">
+            <div className="inline-flex gap-1.5 mb-3">
+              {[0, 1, 2].map((i) => (
+                <span key={i} className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+              ))}
+            </div>
+            <div className="text-sm text-slate-500">{t.analyzing}</div>
           </div>
         )}
 
         {/* Results */}
         {result && opt && rec && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <AgentTrace trace={result.trace} steps={result.steps} model={result.model} lang={lang.toLowerCase()} />
 
             {/* Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: t.mEui, val: rec.design.f1_eui, unit: t.uEui, color: 'emerald',
+                { label: t.mEui, val: rec.design.f1_eui, unit: t.uEui, color: 'blue', icon: '⚡',
                   sub: `↓ ${Math.round((1 - rec.design.f1_eui / baseEui) * 100)}% ${t.reduction}` },
-                { label: t.mLcc, val: rec.design.f2_lcc, unit: t.uLcc, color: 'blue', sub: '25-yr NPV' },
-                { label: t.mWlc, val: rec.design.f3_wlc, unit: t.uWlc, color: 'violet', sub: 'embodied + ops' },
-                { label: t.mCapex, val: `$${(rec.design.capex / 1000).toFixed(0)}k`, unit: t.uCapex, color: 'amber', sub: '' },
-              ].map((m) => (
-                <div key={m.label} className="bg-white border border-slate-200 rounded-xl p-4">
-                  <div className="text-xs text-slate-500 mb-1">{m.label}</div>
-                  <div className={`text-2xl font-semibold ${COLOR[m.color]}`}>{m.val}</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">{m.unit}{m.sub ? ` · ${m.sub}` : ''}</div>
-                </div>
-              ))}
+                { label: t.mLcc, val: rec.design.f2_lcc, unit: t.uLcc, color: 'indigo', icon: '💰', sub: '25-yr NPV' },
+                { label: t.mWlc, val: rec.design.f3_wlc, unit: t.uWlc, color: 'cyan', icon: '🌿', sub: 'embodied + ops' },
+                { label: t.mCapex, val: `$${(rec.design.capex / 1000).toFixed(0)}k`, unit: t.uCapex, color: 'amber', icon: '🏗️', sub: '' },
+              ].map((m) => {
+                const s = METRIC_STYLE[m.color];
+                return (
+                  <div key={m.label} className="bg-white rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-4 fade-up">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className={`w-7 h-7 rounded-lg ${s.chip} flex items-center justify-center text-sm`}>{m.icon}</span>
+                      <span className="text-xs text-slate-500">{m.label}</span>
+                    </div>
+                    <div className={`text-2xl font-bold ${s.text}`}>{m.val}</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">{m.unit}{m.sub ? ` · ${m.sub}` : ''}</div>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Pareto */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <div className="text-sm font-medium text-slate-800 mb-3">📊 {t.pareto}</div>
-              <ParetoChart opt={opt} labels={opt.objective_labels} />
-            </div>
+            <Panel icon="📊" title={t.pareto}><ParetoChart opt={opt} labels={opt.objective_labels} /></Panel>
 
-            {/* Recommendation narrative */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <div className="text-sm font-medium text-slate-800 mb-3">🤖 {t.recoTitle}</div>
+            <Panel icon="🤖" title={t.recoTitle}>
               <div className="text-sm text-slate-700 leading-relaxed space-y-1.5">
                 {result.narrative.split('\n').filter((l) => l.trim()).map((line, i) => {
                   const clean = line.replace(/\*\*/g, '').replace(/^#+\s*/, '').replace(/^---+$/, '');
                   if (!clean.trim()) return null;
                   if (line.startsWith('**') || line.match(/^#+/)) return <div key={i} className="font-semibold text-slate-900 mt-2">{clean}</div>;
-                  if (line.match(/^[-•\d]/)) return <div key={i} className="pl-2 border-l-2 border-emerald-200">{clean}</div>;
+                  if (line.match(/^[-•\d]/)) return <div key={i} className="pl-3 border-l-2 border-blue-200">{clean}</div>;
                   return <div key={i}>{clean}</div>;
                 })}
               </div>
-            </div>
+            </Panel>
 
-            {/* XAI */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <div className="text-sm font-medium text-slate-800 mb-3">🔍 {t.xaiTitle}</div>
-              <XAIPanel xai={rec.xai} lang={lang.toLowerCase()} />
-            </div>
+            <Panel icon="🔍" title={t.xaiTitle}><XAIPanel xai={rec.xai} lang={lang.toLowerCase()} /></Panel>
 
-            {/* Compliance */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <div className="text-sm font-medium text-slate-800 mb-3">🛡️ {t.compTitle}</div>
-              <CompliancePanel c={rec.compliance} lang={lang.toLowerCase()} />
-            </div>
+            <Panel icon="🛡️" title={t.compTitle}><CompliancePanel c={rec.compliance} lang={lang.toLowerCase()} /></Panel>
 
-            <button onClick={reset} className="w-full py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium rounded-lg text-sm transition-colors">
+            <button onClick={reset} className="w-full py-3 bg-white ring-1 ring-slate-200 hover:bg-slate-50 text-slate-600 font-medium rounded-xl text-sm transition-colors">
               ← {t.reset}
             </button>
           </div>
         )}
-      </div>
-    </main>
+
+        <footer className="mt-12 pb-6 text-center text-xs text-slate-400">
+          <span className="inline-flex items-center gap-1.5">
+            <Logo size={18} showWordmark={false} /> liênnhã. · NZEB Platform — TP.HCM Net-Zero 2050
+          </span>
+        </footer>
+      </main>
+    </div>
   );
 }

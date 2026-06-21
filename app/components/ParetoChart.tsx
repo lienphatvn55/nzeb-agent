@@ -52,7 +52,7 @@ export default function ParetoChart({ opt, labels }: { opt: OptimizeResult; labe
         <div className="flex gap-1">
           {(['scatter', 'parallel'] as const).map((v) => (
             <button key={v} onClick={() => setView(v)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium border ${view === v ? 'bg-slate-800 text-white border-slate-800' : 'text-slate-500 border-slate-200'}`}>
+              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition ${view === v ? 'bg-blue-600 text-white border-blue-600' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
               {v === 'scatter' ? 'f1×f2 (WLC color)' : 'Parallel coords'}
             </button>
           ))}
@@ -86,9 +86,9 @@ export default function ParetoChart({ opt, labels }: { opt: OptimizeResult; labe
             const special = i === rec || i === ext.min_eui || i === ext.min_lcc || i === ext.min_wlc;
             return (
               <g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} style={{ cursor: 'pointer' }}>
-                {i === rec && <circle cx={px} cy={py} r={10} fill="none" stroke="#0f172a" strokeWidth={1.5} />}
+                {i === rec && <circle cx={px} cy={py} r={10} fill="none" stroke="#1d4ed8" strokeWidth={2} />}
                 <circle cx={px} cy={py} r={special ? 6 : 4} fill={wlcColor(t)}
-                  stroke={special ? '#0f172a' : 'white'} strokeWidth={special ? 1.5 : 0.7} />
+                  stroke={special ? '#1d4ed8' : 'white'} strokeWidth={special ? 1.5 : 0.7} />
               </g>
             );
           })}
@@ -103,7 +103,7 @@ export default function ParetoChart({ opt, labels }: { opt: OptimizeResult; labe
                 <rect x={tx} y={py - 44} width={124} height={42} rx={4} fill="#0f172a" opacity={0.92} />
                 <text x={tx + 6} y={py - 30} fontSize="8.5" fill="#fff">EUI {s.f1_eui} · LCC {s.f2_lcc}</text>
                 <text x={tx + 6} y={py - 19} fontSize="8.5" fill="#fff">WLC {s.f3_wlc} · ${(s.capex / 1000).toFixed(0)}k</text>
-                <text x={tx + 6} y={py - 8} fontSize="8.5" fill="#34d399">{tag(hover) || `solution #${hover}`}</text>
+                <text x={tx + 6} y={py - 8} fontSize="8.5" fill="#38bdf8">{tag(hover) || `solution #${hover}`}</text>
               </g>
             );
           })()}
@@ -114,7 +114,7 @@ export default function ParetoChart({ opt, labels }: { opt: OptimizeResult; labe
 
       {/* legend */}
       <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 flex-wrap">
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-slate-900 inline-block" /> ★ recommended (knee)</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-700 inline-block" /> ★ recommended (knee)</span>
         <span className="flex items-center gap-1">f3 WLC:
           <span className="inline-block w-16 h-2 rounded" style={{ background: 'linear-gradient(90deg,#10b981,#f59e0b,#ef4444)' }} />
           low → high carbon</span>
@@ -149,7 +149,7 @@ function ParallelCoords({ sols, rec, euiR, lccR, wlcR, hover, setHover }: {
         const isRec = i === rec, isHover = i === hover;
         return (
           <polyline key={i} points={pts} fill="none"
-            stroke={isRec ? '#0f172a' : isHover ? '#10b981' : '#cbd5e1'}
+            stroke={isRec ? '#1d4ed8' : isHover ? '#0ea5e9' : '#cbd5e1'}
             strokeWidth={isRec ? 2.5 : isHover ? 2 : 1}
             opacity={isRec || isHover ? 1 : 0.5}
             onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}

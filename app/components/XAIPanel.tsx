@@ -36,14 +36,14 @@ export default function XAIPanel({ xai, lang }: { xai: XaiResult; lang: string }
             <div key={w.key} className="flex items-center gap-2">
               <div className="w-28 text-xs text-slate-500 text-right shrink-0 truncate" title={w.name}>{w.name}</div>
               <div className="flex-1 h-5 bg-slate-50 rounded relative border border-slate-100">
-                <div className="absolute inset-y-0 left-0 bg-emerald-500 rounded" style={{ width: `${(w.eui_saved / maxSaved) * 100}%` }} />
-                <span className="absolute left-1.5 top-0.5 text-[10px] text-emerald-900 font-medium">−{w.eui_saved}</span>
+                <div className="absolute inset-y-0 left-0 bg-blue-500 rounded" style={{ width: `${(w.eui_saved / maxSaved) * 100}%` }} />
+                <span className="absolute left-1.5 top-0.5 text-[10px] text-blue-900 font-medium">−{w.eui_saved}</span>
               </div>
             </div>
           ))}
           <div className="flex items-center gap-2">
             <div className="w-28 text-xs text-slate-700 font-medium text-right shrink-0">{t.final}</div>
-            <div className="flex-1 h-5 bg-emerald-600 rounded relative">
+            <div className="flex-1 h-5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded relative">
               <span className="absolute right-1.5 top-0.5 text-[10px] text-white font-semibold">{xai.post_eui} ({t.saved} {xai.eui_reduction_pct}%)</span>
             </div>
           </div>
