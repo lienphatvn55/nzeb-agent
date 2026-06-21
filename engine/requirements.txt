@@ -1,0 +1,4 @@
+pymoo>=0.6.1
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2
