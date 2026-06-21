@@ -46,13 +46,13 @@ export default function ParetoChart({ opt, labels }: { opt: OptimizeResult; labe
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-500 dark:text-slate-400">
           {opt.algorithm.name} · pop {opt.algorithm.pop_size} · {opt.algorithm.generations} gens · {opt.n_solutions} Pareto-optimal solutions
         </div>
         <div className="flex gap-1">
           {(['scatter', 'parallel'] as const).map((v) => (
             <button key={v} onClick={() => setView(v)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition ${view === v ? 'bg-blue-600 text-white border-blue-600' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
+              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition ${view === v ? 'bg-blue-600 text-white border-blue-600' : 'text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
               {v === 'scatter' ? 'f1×f2 (WLC color)' : 'Parallel coords'}
             </button>
           ))}
@@ -88,7 +88,7 @@ export default function ParetoChart({ opt, labels }: { opt: OptimizeResult; labe
               <g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} style={{ cursor: 'pointer' }}>
                 {i === rec && <circle cx={px} cy={py} r={10} fill="none" stroke="#1d4ed8" strokeWidth={2} />}
                 <circle cx={px} cy={py} r={special ? 6 : 4} fill={wlcColor(t)}
-                  stroke={special ? '#1d4ed8' : 'white'} strokeWidth={special ? 1.5 : 0.7} />
+                  stroke={special ? '#1d4ed8' : 'rgba(255,255,255,0.8)'} strokeWidth={special ? 1.5 : 0.7} className="dark:stroke-slate-900" />
               </g>
             );
           })}
@@ -113,7 +113,7 @@ export default function ParetoChart({ opt, labels }: { opt: OptimizeResult; labe
       )}
 
       {/* legend */}
-      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 flex-wrap">
+      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-700 inline-block" /> ★ recommended (knee)</span>
         <span className="flex items-center gap-1">f3 WLC:
           <span className="inline-block w-16 h-2 rounded" style={{ background: 'linear-gradient(90deg,#10b981,#f59e0b,#ef4444)' }} />

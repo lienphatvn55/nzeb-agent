@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { OptimizeResult } from '@/lib/harness/engine-client';
 import Logo from './components/Logo';
 import ParetoChart from './components/ParetoChart';
@@ -71,18 +71,18 @@ interface AgentResponse {
 }
 
 const METRIC_STYLE: Record<string, { chip: string; text: string }> = {
-  blue: { chip: 'bg-blue-50 text-blue-600', text: 'text-blue-700' },
-  indigo: { chip: 'bg-indigo-50 text-indigo-600', text: 'text-indigo-700' },
-  cyan: { chip: 'bg-cyan-50 text-cyan-600', text: 'text-cyan-700' },
-  amber: { chip: 'bg-amber-50 text-amber-600', text: 'text-amber-700' },
+  blue: { chip: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400', text: 'text-blue-700 dark:text-blue-400' },
+  indigo: { chip: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400', text: 'text-indigo-700 dark:text-indigo-400' },
+  cyan: { chip: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-950/50 dark:text-cyan-400', text: 'text-cyan-700 dark:text-cyan-400' },
+  amber: { chip: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400', text: 'text-amber-700 dark:text-amber-400' },
 };
 
 function Panel({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="bg-white rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-5 fade-up">
+    <section className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-5 fade-up">
       <div className="flex items-center gap-2.5 mb-4">
-        <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-base">{icon}</span>
-        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+        <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 flex items-center justify-center text-base">{icon}</span>
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
       </div>
       {children}
     </section>
@@ -96,11 +96,20 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AgentResponse | null>(null);
   const [error, setError] = useState('');
+  const [dark, setDark] = useState(false);
   const [form, setForm] = useState({
     btype: 'office', byear: '1998', barea: '5000',
     bfloors: '12', beui: '210', bwall: '2.2', bbudget: '900000',
   });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  useEffect(() => { setDark(document.documentElement.classList.contains('dark')); }, []);
+  function toggleTheme() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle('dark', next);
+    try { localStorage.setItem('theme', next ? 'dark' : 'light'); } catch {}
+  }
 
   async function run(l: Lang = lang) {
     setLoading(true); setError(''); setStep(2);
@@ -124,59 +133,63 @@ export default function Home() {
   const rec = opt ? opt.recommended : null;
   const baseEui = result?.building.eui_base ?? Number(form.beui);
 
-  const inputCls = 'w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 bg-slate-50/70 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:bg-white transition';
+  const inputCls = 'w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 bg-slate-50/70 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 transition';
 
   return (
     <div className="min-h-screen">
       {/* Sticky header */}
-      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 border-b border-slate-200/70">
+      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/70 dark:border-slate-800">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          {/* To use the exact original artwork: save it to public/logo.png and
-              replace <Logo .../> with <img src="/logo.png" alt="liênnhã." className="h-9" /> */}
           <div className="flex items-center gap-3">
-            <Logo size={36} />
-            <span className="hidden sm:inline-block h-5 w-px bg-slate-200" />
-            <span className="hidden sm:inline text-xs font-medium text-slate-500">{t.tag}</span>
+            <Logo size={34} />
+            <span className="hidden sm:inline-block h-5 w-px bg-slate-200 dark:bg-slate-700" />
+            <span className="hidden sm:inline text-xs font-medium text-slate-500 dark:text-slate-400">{t.tag}</span>
           </div>
-          <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1">
-            {LANGS.map((l) => (
-              <button key={l} onClick={() => switchLang(l)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${lang === l ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                {l}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <button onClick={toggleTheme} aria-label="Toggle theme"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+              {dark ? '☀️' : '🌙'}
+            </button>
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-full p-1">
+              {LANGS.map((l) => (
+                <button key={l} onClick={() => switchLang(l)}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${lang === l ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8">
-        {/* Hero (only before results) */}
+        {/* Hero */}
         {!result && (
           <div className="text-center max-w-3xl mx-auto mb-10 fade-up">
-            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 ring-1 ring-blue-100 px-3 py-1 text-xs font-medium text-blue-700 mb-5">
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-950/40 ring-1 ring-blue-100 dark:ring-blue-900 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 mb-5">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
               NSGA-III · XAI · QCVN 09:2017 · LEED v5 BD+C
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 leading-tight">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
               {t.heroTitle}
             </h1>
-            <p className="mt-4 text-[15px] text-slate-500 leading-relaxed">{t.heroSub}</p>
+            <p className="mt-4 text-[15px] text-slate-500 dark:text-slate-400 leading-relaxed">{t.heroSub}</p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               {['EUI', 'LCC', 'WLC', 'Net-Zero 2050', 'TP.HCM'].map((b) => (
-                <span key={b} className="rounded-full bg-white ring-1 ring-slate-200 px-3 py-1 text-xs text-slate-600">{b}</span>
+                <span key={b} className="rounded-full bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 px-3 py-1 text-xs text-slate-600 dark:text-slate-300">{b}</span>
               ))}
             </div>
           </div>
         )}
 
         {/* Step indicator */}
-        <div className="flex mb-6 rounded-2xl overflow-hidden ring-1 ring-slate-200/70 bg-white shadow-sm">
+        <div className="flex mb-6 rounded-2xl overflow-hidden ring-1 ring-slate-200/70 dark:ring-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           {[t.s1, t.s2, t.s3].map((label, i) => (
             <div key={i} className={`flex-1 flex items-center gap-2.5 px-4 py-3 text-xs font-medium transition-colors
-              ${step === i + 1 ? 'bg-blue-50/70 text-blue-700'
-              : step > i + 1 ? 'text-blue-600' : 'text-slate-400'}`}>
+              ${step === i + 1 ? 'bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
+              : step > i + 1 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0
-                ${step >= i + 1 ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-400'}`}>
+                ${step >= i + 1 ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
                 {step > i + 1 ? '✓' : i + 1}
               </span>
               {label}
@@ -186,14 +199,14 @@ export default function Home() {
 
         {/* Input */}
         {!result && (
-          <div className="bg-white rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-6 fade-up">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-6 fade-up">
             <div className="flex items-center gap-2.5 mb-5">
-              <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">🏢</span>
-              <h2 className="text-sm font-semibold text-slate-800">{t.p1}</h2>
+              <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 flex items-center justify-center">🏢</span>
+              <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.p1}</h2>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
               <div>
-                <label className="block text-xs text-slate-500 font-medium mb-1.5">{t.ltype}</label>
+                <label className="block text-xs text-slate-500 dark:text-slate-400 font-medium mb-1.5">{t.ltype}</label>
                 <select value={form.btype} onChange={(e) => set('btype', e.target.value)} className={inputCls}>
                   <option value="office">{t.oOffice}</option>
                   <option value="residential">{t.oRes}</option>
@@ -204,12 +217,12 @@ export default function Home() {
               {[['byear', t.lyear], ['barea', t.larea], ['bfloors', t.lfloors],
                 ['beui', t.leui], ['bwall', t.lwall], ['bbudget', t.lbudget]].map(([k, label]) => (
                 <div key={k}>
-                  <label className="block text-xs text-slate-500 font-medium mb-1.5">{label}</label>
+                  <label className="block text-xs text-slate-500 dark:text-slate-400 font-medium mb-1.5">{label}</label>
                   <input type="number" value={form[k as keyof typeof form]} onChange={(e) => set(k, e.target.value)} className={inputCls} />
                 </div>
               ))}
             </div>
-            {error && <div className="text-red-600 text-xs mb-3 bg-red-50 rounded-lg px-3 py-2">{error}</div>}
+            {error && <div className="text-red-600 dark:text-red-400 text-xs mb-3 bg-red-50 dark:bg-red-950/40 rounded-lg px-3 py-2">{error}</div>}
             <button onClick={() => run()} disabled={loading}
               className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-lg shadow-blue-600/20 transition-all">
               {loading ? `⏳ ${t.analyzing}` : `${t.btn} →`}
@@ -218,13 +231,13 @@ export default function Home() {
         )}
 
         {loading && !result && (
-          <div className="bg-white rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-10 text-center mt-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-10 text-center mt-6">
             <div className="inline-flex gap-1.5 mb-3">
               {[0, 1, 2].map((i) => (
                 <span key={i} className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
               ))}
             </div>
-            <div className="text-sm text-slate-500">{t.analyzing}</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">{t.analyzing}</div>
           </div>
         )}
 
@@ -233,7 +246,6 @@ export default function Home() {
           <div className="space-y-5">
             <AgentTrace trace={result.trace} steps={result.steps} model={result.model} lang={lang.toLowerCase()} />
 
-            {/* Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { label: t.mEui, val: rec.design.f1_eui, unit: t.uEui, color: 'blue', icon: '⚡',
@@ -244,13 +256,13 @@ export default function Home() {
               ].map((m) => {
                 const s = METRIC_STYLE[m.color];
                 return (
-                  <div key={m.label} className="bg-white rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-4 fade-up">
+                  <div key={m.label} className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-4 fade-up">
                     <div className="flex items-center gap-2 mb-2.5">
                       <span className={`w-7 h-7 rounded-lg ${s.chip} flex items-center justify-center text-sm`}>{m.icon}</span>
-                      <span className="text-xs text-slate-500">{m.label}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{m.label}</span>
                     </div>
                     <div className={`text-2xl font-bold ${s.text}`}>{m.val}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{m.unit}{m.sub ? ` · ${m.sub}` : ''}</div>
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{m.unit}{m.sub ? ` · ${m.sub}` : ''}</div>
                   </div>
                 );
               })}
@@ -259,12 +271,12 @@ export default function Home() {
             <Panel icon="📊" title={t.pareto}><ParetoChart opt={opt} labels={opt.objective_labels} /></Panel>
 
             <Panel icon="🤖" title={t.recoTitle}>
-              <div className="text-sm text-slate-700 leading-relaxed space-y-1.5">
+              <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-1.5">
                 {result.narrative.split('\n').filter((l) => l.trim()).map((line, i) => {
                   const clean = line.replace(/\*\*/g, '').replace(/^#+\s*/, '').replace(/^---+$/, '');
                   if (!clean.trim()) return null;
-                  if (line.startsWith('**') || line.match(/^#+/)) return <div key={i} className="font-semibold text-slate-900 mt-2">{clean}</div>;
-                  if (line.match(/^[-•\d]/)) return <div key={i} className="pl-3 border-l-2 border-blue-200">{clean}</div>;
+                  if (line.startsWith('**') || line.match(/^#+/)) return <div key={i} className="font-semibold text-slate-900 dark:text-white mt-2">{clean}</div>;
+                  if (line.match(/^[-•\d]/)) return <div key={i} className="pl-3 border-l-2 border-blue-200 dark:border-blue-800">{clean}</div>;
                   return <div key={i}>{clean}</div>;
                 })}
               </div>
@@ -274,13 +286,13 @@ export default function Home() {
 
             <Panel icon="🛡️" title={t.compTitle}><CompliancePanel c={rec.compliance} lang={lang.toLowerCase()} /></Panel>
 
-            <button onClick={reset} className="w-full py-3 bg-white ring-1 ring-slate-200 hover:bg-slate-50 text-slate-600 font-medium rounded-xl text-sm transition-colors">
+            <button onClick={reset} className="w-full py-3 bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium rounded-xl text-sm transition-colors">
               ← {t.reset}
             </button>
           </div>
         )}
 
-        <footer className="mt-12 pb-6 text-center text-xs text-slate-400">
+        <footer className="mt-12 pb-6 text-center text-xs text-slate-400 dark:text-slate-500">
           <span className="inline-flex items-center gap-1.5">
             <Logo size={18} showWordmark={false} /> liênnhã. · NZEB Platform — TP.HCM Net-Zero 2050
           </span>

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* class-based dark mode: dark: variants apply under a .dark ancestor */
+@custom-variant dark (&:where(.dark, .dark *));
+
 * {
   box-sizing: border-box;
 }
@@ -25,7 +28,19 @@ body {
     radial-gradient(60rem 40rem at 50% -10rem, rgba(37, 99, 235, 0.10), transparent 60%),
     radial-gradient(40rem 30rem at 100% 0%, rgba(79, 70, 229, 0.06), transparent 55%);
   background-attachment: fixed;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+.dark body {
+  color: #e2e8f0;
+  background-color: #0a0f1d;
+  background-image:
+    radial-gradient(60rem 40rem at 50% -10rem, rgba(37, 99, 235, 0.18), transparent 60%),
+    radial-gradient(40rem 30rem at 100% 0%, rgba(99, 102, 241, 0.12), transparent 55%);
+}
+
+.dark ::-webkit-scrollbar-thumb { background: #334155; background-clip: content-box; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #475569; background-clip: content-box; }
 
 /* subtle entrance for result blocks */
 @keyframes fadeUp {
