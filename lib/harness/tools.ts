@@ -60,6 +60,17 @@ export const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+// Coerce an LLM-provided intensity vector into a safe length-8 array of finite
+// values clamped to [0,1]. Guards against NaN / wrong-length inputs propagating
+// into the engine.
+function toIntensityVector(raw: unknown): number[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  return MEASURE_KEYS.map((_, i) => {
+    const v = Number(arr[i]);
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
+  });
+}
+
 export interface HarnessContext {
   building: BuildingInput;
   /** captured tool outputs for the UI */
@@ -100,13 +111,13 @@ export async function dispatchTool(
       };
     }
     case 'check_compliance': {
-      const x = (input.x as number[]) ?? [];
+      const x = toIntensityVector(input.x);
       const res = await engine.compliance(b, x);
       (ctx.captured.compliance ??= []).push(res);
       return res;
     }
     case 'explain_design': {
-      const x = (input.x as number[]) ?? [];
+      const x = toIntensityVector(input.x);
       const res = await engine.explain(b, x);
       (ctx.captured.explain ??= []).push(res);
       return res;

@@ -42,7 +42,7 @@ Final recommendation must contain these exact section headers (translate the hea
 **COMPLIANCE** — state QCVN 09:2017 pass/fail with the failing clause if any, and the LEED v5 BD+C likely tier with EA points.
 **SMART-CITY / NET-ZERO 2050 PATHWAY** — one concrete IoT/M&V and scale-up recommendation.
 
-Be concise, technical and decision-oriented. Max ~320 words. Use short bullet lines ("- ") for lists; do NOT use markdown tables (the UI renders plain text). ${LANG_NOTE[lang] ?? LANG_NOTE.en}`;
+Be concise and decision-oriented. HARD LIMIT ~170 words total. Every bullet must be ONE short line (≤14 words) — no sub-clauses, no filler. Do NOT write any preamble sentence; start directly with the first section header. Use "- " bullets; no markdown tables (the UI renders plain text). ${LANG_NOTE[lang] ?? LANG_NOTE.en}`;
 }
 
 export interface HarnessResult {
@@ -57,7 +57,12 @@ export async function runHarness(
   building: BuildingInput,
   lang: string,
 ): Promise<HarnessResult> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    // Optional: route through a custom/self-hosted gateway via ANTHROPIC_BASE_URL.
+    // Left undefined -> the SDK uses the official Anthropic endpoint.
+    baseURL: process.env.ANTHROPIC_BASE_URL || undefined,
+  });
   const ctx: HarnessContext = { building, captured: {} };
   const trace: HarnessResult['trace'] = [];
 
@@ -127,6 +132,25 @@ export async function runHarness(
       });
     }
     messages.push({ role: 'user', content: toolResults });
+  }
+
+  // Guard: if we hit MAX_STEPS while still calling tools, force one final
+  // tool-free completion so the user always gets a written recommendation.
+  if (!narrative.trim()) {
+    const final = await client.messages.create({
+      model: MODEL,
+      max_tokens: 1600,
+      system: systemPrompt(lang),
+      messages: [
+        ...messages,
+        { role: 'user', content: 'Now write the final recommendation from the tool results above. Do NOT call any tools.' },
+      ],
+    });
+    narrative = final.content
+      .filter((c): c is Anthropic.TextBlock => c.type === 'text')
+      .map((c) => c.text)
+      .join('\n')
+      .trim();
   }
 
   return { narrative, trace, captured: ctx.captured, model: MODEL, steps };

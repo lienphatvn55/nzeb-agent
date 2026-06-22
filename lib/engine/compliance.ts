@@ -16,7 +16,7 @@ const ROOF_U_BASE = 1.80;
 const SHGC_BASE = 0.62;
 const LPD_BASE: Record<string, number> = { office: 16.0, residential: 12.0, commercial: 20.0, mixed: 16.0 };
 
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+const clamp01 = (v: number) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0);
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 
 export function effectiveProperties(b: Building, x: number[]) {
@@ -87,8 +87,11 @@ export function checkLeedV5(b: Building, x: number[], euiPost: number): Complian
   const elecPts = xi.hvac_upgrade > 0.5 && pvFraction > 0.05 ? 3 : xi.hvac_upgrade > 0.3 ? 2 : 0;
   credits.push({ name: 'Electrification & Grid Harmonization', type: 'credit', points: elecPts, max: 3, detail: 'Electrified high-COP HVAC + PV demand flexibility' });
 
-  const cxPts = 4;
-  credits.push({ name: 'Enhanced Commissioning + Advanced Metering', type: 'credit', points: cxPts, max: 4, detail: 'IoT sub-metering + M&V assumed in retrofit scope' });
+  // Commissioning/metering credit is only assumed when a retrofit is actually
+  // applied — flagged conditionally rather than hardcoded.
+  const anyMeasure = MEASURE_KEYS.some((_, i) => clamp01(x[i]) > 0.02);
+  const cxPts = anyMeasure ? 4 : 0;
+  credits.push({ name: 'Enhanced Commissioning + Advanced Metering', type: 'credit', points: cxPts, max: 4, detail: anyMeasure ? 'IoT sub-metering + M&V assumed in retrofit scope' : 'No retrofit measures applied' });
 
   const eaPoints = credits.reduce((a, c) => a + (c.points ?? 0), 0);
   const eaMax = 30;

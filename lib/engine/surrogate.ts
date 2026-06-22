@@ -57,7 +57,7 @@ export const MEASURES: Measure[] = [
 export const MEASURE_KEYS = MEASURES.map((m) => m.key);
 export const N_VAR = MEASURES.length;
 
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+const clamp01 = (v: number) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0);
 
 function roofArea(b: Building) { return b.area / Math.max(b.floors, 1); }
 function facadeArea(b: Building) {
@@ -91,7 +91,8 @@ export function measureEmbodied(b: Building, x: number[]): Record<string, number
 export interface EnergyBreakdown {
   cooling: number; lighting: number; equipment: number; fans: number;
   gross_eui: number; pv_offset: number; net_eui: number;
-  save_wall: number; save_roof: number; save_window: number; save_shading: number;
+  save_wall: number; save_roof: number; save_cool_roof: number;
+  save_window: number; save_shading: number;
   save_led: number; save_hvac: number; save_pv: number; cop_new: number;
 }
 
@@ -107,10 +108,14 @@ export function energyBreakdown(b: Building, x: number[]): EnergyBreakdown {
 
   const envCooling = cooling0 * ENVELOPE_DRIVEN_FRACTION_OF_COOLING;
   const wallCut = envCooling * ENV_SPLIT.wall * (0.70 * xi.wall_insulation);
-  const roofCut = envCooling * ENV_SPLIT.roof * (0.65 * xi.roof_insulation + 0.25 * xi.cool_roof);
+  // Split roof and window savings per measure (faithful attribution, no fixed
+  // post-hoc ratios). The summed total is unchanged, so the objectives are too.
+  const roofInsCut = envCooling * ENV_SPLIT.roof * (0.65 * xi.roof_insulation);
+  const coolRoofCut = envCooling * ENV_SPLIT.roof * (0.25 * xi.cool_roof);
   const wcondCut = envCooling * ENV_SPLIT.window_cond * (0.60 * xi.window_glazing);
-  const solarCut = envCooling * ENV_SPLIT.solar_gain * (0.55 * xi.window_glazing + 0.65 * xi.external_shading);
-  const envelopeSavings = wallCut + roofCut + wcondCut + solarCut;
+  const solarGlazingCut = envCooling * ENV_SPLIT.solar_gain * (0.55 * xi.window_glazing);
+  const solarShadingCut = envCooling * ENV_SPLIT.solar_gain * (0.65 * xi.external_shading);
+  const envelopeSavings = wallCut + roofInsCut + coolRoofCut + wcondCut + solarGlazingCut + solarShadingCut;
 
   const ledLightingCut = lighting0 * 0.55 * xi.led_lighting;
   const ledCoolingCut = ledLightingCut * 0.25;
@@ -135,8 +140,9 @@ export function energyBreakdown(b: Building, x: number[]): EnergyBreakdown {
   return {
     cooling: coolingFinal, lighting: lightingFinal, equipment, fans,
     gross_eui: grossEui, pv_offset: pvEui, net_eui: netEui,
-    save_wall: wallCut, save_roof: roofCut, save_window: wcondCut + solarCut,
-    save_shading: 0.0, save_led: ledLightingCut + ledCoolingCut,
+    save_wall: wallCut, save_roof: roofInsCut, save_cool_roof: coolRoofCut,
+    save_window: wcondCut + solarGlazingCut, save_shading: solarShadingCut,
+    save_led: ledLightingCut + ledCoolingCut,
     save_hvac: hvacSavings, save_pv: pvEui, cop_new: copNew,
   };
 }

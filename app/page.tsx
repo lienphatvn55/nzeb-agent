@@ -6,6 +6,8 @@ import ParetoChart from './components/ParetoChart';
 import XAIPanel from './components/XAIPanel';
 import CompliancePanel from './components/CompliancePanel';
 import AgentTrace from './components/AgentTrace';
+import Recommendation from './components/Recommendation';
+import RunningPanel from './components/RunningPanel';
 
 const LANGS = ['EN', 'KO', 'VI'] as const;
 type Lang = typeof LANGS[number];
@@ -77,9 +79,18 @@ const METRIC_STYLE: Record<string, { chip: string; text: string }> = {
   amber: { chip: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400', text: 'text-amber-700 dark:text-amber-400' },
 };
 
+// Group the integer part with thousand separators while preserving a decimal
+// tail being typed. Used for number inputs (except year).
+function groupNum(raw: string): string {
+  if (!raw) return '';
+  const [int, ...rest] = raw.split('.');
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return rest.length ? `${grouped}.${rest.join('')}` : grouped;
+}
+
 function Panel({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-5 fade-up">
+    <section className="card-grad bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-5 fade-up">
       <div className="flex items-center gap-2.5 mb-4">
         <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 flex items-center justify-center text-base">{icon}</span>
         <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
@@ -95,6 +106,7 @@ export default function Home() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AgentResponse | null>(null);
+  const [cache, setCache] = useState<Record<string, AgentResponse>>({});
   const [error, setError] = useState('');
   const [dark, setDark] = useState(false);
   const [form, setForm] = useState({
@@ -103,6 +115,9 @@ export default function Home() {
   });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  // One-time sync of React state from the theme class set by the pre-hydration
+  // script in layout.tsx (avoids a hydration mismatch on the toggle icon).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setDark(document.documentElement.classList.contains('dark')); }, []);
   function toggleTheme() {
     const next = !dark;
@@ -112,22 +127,32 @@ export default function Home() {
   }
 
   async function run(l: Lang = lang) {
+    const key = l.toLowerCase();
     setLoading(true); setError(''); setStep(2);
     try {
       const res = await fetch('/api/agent', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, lang: l.toLowerCase() }),
+        body: JSON.stringify({ ...form, lang: key }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'failed');
+      setCache((c) => ({ ...c, [key]: data }));
       setResult(data); setStep(3);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Analysis failed'); setStep(1);
     } finally { setLoading(false); }
   }
 
-  function switchLang(l: Lang) { setLang(l); if (result) run(l); }
-  function reset() { setResult(null); setStep(1); setError(''); }
+  // Switching language reuses a cached run when available (no extra API spend);
+  // only the first visit to each language calls the agent.
+  function switchLang(l: Lang) {
+    setLang(l);
+    if (!result) return;
+    const cached = cache[l.toLowerCase()];
+    if (cached) { setResult(cached); setStep(3); }
+    else run(l);
+  }
+  function reset() { setResult(null); setCache({}); setStep(1); setError(''); }
 
   const opt = result?.optimization ?? null;
   const rec = opt ? opt.recommended : null;
@@ -170,7 +195,7 @@ export default function Home() {
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
               NSGA-III · XAI · QCVN 09:2017 · LEED v5 BD+C
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight bg-gradient-to-br from-slate-900 via-slate-800 to-blue-700 dark:from-white dark:via-slate-100 dark:to-blue-300 bg-clip-text text-transparent">
               {t.heroTitle}
             </h1>
             <p className="mt-4 text-[15px] text-slate-500 dark:text-slate-400 leading-relaxed">{t.heroSub}</p>
@@ -183,7 +208,7 @@ export default function Home() {
         )}
 
         {/* Step indicator */}
-        <div className="flex mb-6 rounded-2xl overflow-hidden ring-1 ring-slate-200/70 dark:ring-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="flex mb-6 rounded-2xl overflow-hidden ring-1 ring-slate-200/70 dark:ring-slate-800 card-grad bg-white dark:bg-slate-900 shadow-sm">
           {[t.s1, t.s2, t.s3].map((label, i) => (
             <div key={i} className={`flex-1 flex items-center gap-2.5 px-4 py-3 text-xs font-medium transition-colors
               ${step === i + 1 ? 'bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
@@ -197,47 +222,47 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Input */}
+        {/* Input + (during the run) live status panel on the right */}
         {!result && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-6 fade-up">
-            <div className="flex items-center gap-2.5 mb-5">
-              <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 flex items-center justify-center">🏢</span>
-              <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.p1}</h2>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-              <div>
-                <label className="block text-xs text-slate-500 dark:text-slate-400 font-medium mb-1.5">{t.ltype}</label>
-                <select value={form.btype} onChange={(e) => set('btype', e.target.value)} className={inputCls}>
-                  <option value="office">{t.oOffice}</option>
-                  <option value="residential">{t.oRes}</option>
-                  <option value="commercial">{t.oCom}</option>
-                  <option value="mixed">{t.oMix}</option>
-                </select>
+          <div className={loading ? 'grid lg:grid-cols-[minmax(0,1fr)_300px] gap-5 items-start' : ''}>
+            <div className="card-grad bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-6 fade-up">
+              <div className="flex items-center gap-2.5 mb-5">
+                <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 flex items-center justify-center">🏢</span>
+                <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.p1}</h2>
               </div>
-              {[['byear', t.lyear], ['barea', t.larea], ['bfloors', t.lfloors],
-                ['beui', t.leui], ['bwall', t.lwall], ['bbudget', t.lbudget]].map(([k, label]) => (
-                <div key={k}>
-                  <label className="block text-xs text-slate-500 dark:text-slate-400 font-medium mb-1.5">{label}</label>
-                  <input type="number" value={form[k as keyof typeof form]} onChange={(e) => set(k, e.target.value)} className={inputCls} />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+                <div>
+                  <label className="block text-xs text-slate-500 dark:text-slate-400 font-medium mb-1.5">{t.ltype}</label>
+                  <select value={form.btype} onChange={(e) => set('btype', e.target.value)} className={inputCls}>
+                    <option value="office">{t.oOffice}</option>
+                    <option value="residential">{t.oRes}</option>
+                    <option value="commercial">{t.oCom}</option>
+                    <option value="mixed">{t.oMix}</option>
+                  </select>
                 </div>
-              ))}
+                {[['byear', t.lyear], ['barea', t.larea], ['bfloors', t.lfloors],
+                  ['beui', t.leui], ['bwall', t.lwall], ['bbudget', t.lbudget]].map(([k, label]) => {
+                  const isYear = k === 'byear';
+                  return (
+                    <div key={k}>
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 font-medium mb-1.5">{label}</label>
+                      <input
+                        type="text"
+                        inputMode={k === 'bwall' ? 'decimal' : 'numeric'}
+                        value={isYear ? form[k as keyof typeof form] : groupNum(form[k as keyof typeof form])}
+                        onChange={(e) => set(k, e.target.value.replace(isYear ? /\D/g : /[^\d.]/g, ''))}
+                        className={inputCls} />
+                    </div>
+                  );
+                })}
+              </div>
+              {error && <div className="text-red-600 dark:text-red-400 text-xs mb-3 bg-red-50 dark:bg-red-950/40 rounded-lg px-3 py-2">{error}</div>}
+              <button onClick={() => { setCache({}); run(); }} disabled={loading}
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-lg shadow-blue-600/20 transition-all">
+                {loading ? `⏳ ${t.analyzing}` : `${t.btn} →`}
+              </button>
             </div>
-            {error && <div className="text-red-600 dark:text-red-400 text-xs mb-3 bg-red-50 dark:bg-red-950/40 rounded-lg px-3 py-2">{error}</div>}
-            <button onClick={() => run()} disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-lg shadow-blue-600/20 transition-all">
-              {loading ? `⏳ ${t.analyzing}` : `${t.btn} →`}
-            </button>
-          </div>
-        )}
-
-        {loading && !result && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-10 text-center mt-6">
-            <div className="inline-flex gap-1.5 mb-3">
-              {[0, 1, 2].map((i) => (
-                <span key={i} className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-              ))}
-            </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">{t.analyzing}</div>
+            {loading && <RunningPanel lang={lang.toLowerCase()} />}
           </div>
         )}
 
@@ -256,7 +281,7 @@ export default function Home() {
               ].map((m) => {
                 const s = METRIC_STYLE[m.color];
                 return (
-                  <div key={m.label} className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-4 fade-up">
+                  <div key={m.label} className="card-grad bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-4 fade-up">
                     <div className="flex items-center gap-2 mb-2.5">
                       <span className={`w-7 h-7 rounded-lg ${s.chip} flex items-center justify-center text-sm`}>{m.icon}</span>
                       <span className="text-xs text-slate-500 dark:text-slate-400">{m.label}</span>
@@ -271,15 +296,7 @@ export default function Home() {
             <Panel icon="📊" title={t.pareto}><ParetoChart opt={opt} labels={opt.objective_labels} /></Panel>
 
             <Panel icon="🤖" title={t.recoTitle}>
-              <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-1.5">
-                {result.narrative.split('\n').filter((l) => l.trim()).map((line, i) => {
-                  const clean = line.replace(/\*\*/g, '').replace(/^#+\s*/, '').replace(/^---+$/, '');
-                  if (!clean.trim()) return null;
-                  if (line.startsWith('**') || line.match(/^#+/)) return <div key={i} className="font-semibold text-slate-900 dark:text-white mt-2">{clean}</div>;
-                  if (line.match(/^[-•\d]/)) return <div key={i} className="pl-3 border-l-2 border-blue-200 dark:border-blue-800">{clean}</div>;
-                  return <div key={i}>{clean}</div>;
-                })}
-              </div>
+              <Recommendation narrative={result.narrative} lang={lang.toLowerCase()} />
             </Panel>
 
             <Panel icon="🔍" title={t.xaiTitle}><XAIPanel xai={rec.xai} lang={lang.toLowerCase()} /></Panel>

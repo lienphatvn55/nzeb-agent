@@ -25,7 +25,6 @@ export const engine = {
     runCompliance(b, x),
   explain: async (b: BuildingInput, x: number[]): Promise<XaiResult> =>
     runExplain(b, x),
-  health: async (): Promise<boolean> => true,
 };
 
 // ---- Engine response shapes (partial, what the UI consumes) -------------- //

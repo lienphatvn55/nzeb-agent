@@ -12,10 +12,10 @@ export function energyWaterfall(b: Building, x: number[]) {
   const eb = evaluate(b, x).energy;
   const grouped: Record<string, number> = {
     wall_insulation: eb.save_wall,
-    roof_insulation: eb.save_roof * 0.7,
-    cool_roof: eb.save_roof * 0.3,
-    window_glazing: eb.save_window * 0.6,
-    external_shading: eb.save_window * 0.4,
+    roof_insulation: eb.save_roof,
+    cool_roof: eb.save_cool_roof,
+    window_glazing: eb.save_window,
+    external_shading: eb.save_shading,
     led_lighting: eb.save_led,
     hvac_upgrade: eb.save_hvac,
     rooftop_pv: eb.save_pv,

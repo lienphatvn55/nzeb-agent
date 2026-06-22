@@ -28,7 +28,10 @@ export default function CompliancePanel({ c, lang }: { c: ComplianceResult; lang
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
                   {ck.value} {dir(ck.direction)} {ck.limit} {ck.unit}
                 </span>
-                <span className={`w-2 h-2 rounded-full ${ck.pass ? 'bg-emerald-500' : 'bg-red-500'}`} title={ck.pass ? passTxt : failTxt} />
+                <span aria-label={ck.pass ? passTxt : failTxt}
+                  className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white ${ck.pass ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                  {ck.pass ? '✓' : '✗'}
+                </span>
               </div>
             </div>
           ))}

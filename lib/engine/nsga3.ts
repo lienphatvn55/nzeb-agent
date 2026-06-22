@@ -62,31 +62,32 @@ function dominates(a: Ind, b: Ind): boolean {
   return betterEq && strictly;
 }
 
+// Fast non-dominated sort. Works on indices throughout (no O(n) pop.indexOf in
+// the inner loop), so the whole sort is O(n²) instead of O(n³).
 function nonDominatedSort(pop: Ind[]): Ind[][] {
-  const fronts: Ind[][] = [];
+  const N = pop.length;
   const S: number[][] = pop.map(() => []);
-  const n: number[] = pop.map(() => 0);
-  const f0: Ind[] = [];
-  for (let i = 0; i < pop.length; i++) {
-    for (let j = 0; j < pop.length; j++) {
+  const dom: number[] = pop.map(() => 0);
+  let frontIdx: number[] = [];
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
       if (i === j) continue;
       if (dominates(pop[i], pop[j])) S[i].push(j);
-      else if (dominates(pop[j], pop[i])) n[i]++;
+      else if (dominates(pop[j], pop[i])) dom[i]++;
     }
-    if (n[i] === 0) { pop[i].rank = 0; f0.push(pop[i]); }
+    if (dom[i] === 0) { pop[i].rank = 0; frontIdx.push(i); }
   }
-  fronts.push(f0);
+  const fronts: Ind[][] = [frontIdx.map((i) => pop[i])];
   let fi = 0;
-  while (fronts[fi].length) {
-    const next: Ind[] = [];
-    for (const p of fronts[fi]) {
-      const pi = pop.indexOf(p);
+  while (frontIdx.length) {
+    const next: number[] = [];
+    for (const pi of frontIdx) {
       for (const qi of S[pi]) {
-        if (--n[qi] === 0) { pop[qi].rank = fi + 1; next.push(pop[qi]); }
+        if (--dom[qi] === 0) { pop[qi].rank = fi + 1; next.push(qi); }
       }
     }
     fi++;
-    if (next.length) fronts.push(next); else break;
+    if (next.length) { fronts.push(next.map((i) => pop[i])); frontIdx = next; } else break;
   }
   return fronts;
 }
@@ -99,8 +100,8 @@ function sbx(p1: number[], p2: number[], rnd: () => number, eta = 15): [number[]
     if (Math.abs(p1[i] - p2[i]) < 1e-12) continue;
     const u = rnd();
     const beta = u <= 0.5 ? Math.pow(2 * u, 1 / (eta + 1)) : Math.pow(1 / (2 * (1 - u)), 1 / (eta + 1));
-    let a = 0.5 * ((p1[i] + p2[i]) - beta * Math.abs(p2[i] - p1[i]));
-    let b = 0.5 * ((p1[i] + p2[i]) + beta * Math.abs(p2[i] - p1[i]));
+    const a = 0.5 * ((p1[i] + p2[i]) - beta * Math.abs(p2[i] - p1[i]));
+    const b = 0.5 * ((p1[i] + p2[i]) + beta * Math.abs(p2[i] - p1[i]));
     c1[i] = Math.max(0, Math.min(1, a));
     c2[i] = Math.max(0, Math.min(1, b));
   }
