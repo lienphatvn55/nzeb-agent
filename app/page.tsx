@@ -8,6 +8,9 @@ import CompliancePanel from './components/CompliancePanel';
 import AgentTrace from './components/AgentTrace';
 import Recommendation from './components/Recommendation';
 import RunningPanel from './components/RunningPanel';
+import RadarChart from './components/RadarChart';
+import ForecastChart from './components/ForecastChart';
+import BuildingViz from './components/BuildingViz';
 
 const LANGS = ['EN', 'KO', 'VI'] as const;
 type Lang = typeof LANGS[number];
@@ -64,20 +67,13 @@ const T: Record<Lang, Record<string, string>> = {
 };
 
 interface AgentResponse {
-  building: { eui_base: number };
+  building: { eui_base: number; floors: number; area: number; btype: string };
   narrative: string;
   trace: Array<{ step: number; tool: string; input: unknown; summary: string }>;
   steps: number;
   model: string;
   optimization: OptimizeResult | null;
 }
-
-const METRIC_STYLE: Record<string, { chip: string; text: string }> = {
-  blue: { chip: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400', text: 'text-blue-700 dark:text-blue-400' },
-  indigo: { chip: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400', text: 'text-indigo-700 dark:text-indigo-400' },
-  cyan: { chip: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-950/50 dark:text-cyan-400', text: 'text-cyan-700 dark:text-cyan-400' },
-  amber: { chip: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400', text: 'text-amber-700 dark:text-amber-400' },
-};
 
 // Group the integer part with thousand separators while preserving a decimal
 // tail being typed. Used for number inputs (except year).
@@ -88,14 +84,15 @@ function groupNum(raw: string): string {
   return rest.length ? `${grouped}.${rest.join('')}` : grouped;
 }
 
-function Panel({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+// Cyber/teal card used by the step-3 results dashboard (Material 3 dark style).
+function CyberCard({ icon, title, children, className = '' }: { icon: string; title: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className="card-grad bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-5 fade-up">
-      <div className="flex items-center gap-2.5 mb-4">
-        <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 flex items-center justify-center text-base">{icon}</span>
-        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
+    <section className={`cyber-border bg-surface-container rounded-xl overflow-hidden flex flex-col fade-up ${className}`}>
+      <div className="px-4 py-3 border-b border-outline-variant/40 bg-surface-container-high/40 flex items-center gap-2">
+        <span className="material-symbols-outlined text-[20px] text-primary-container">{icon}</span>
+        <h2 className="text-sm font-semibold text-on-surface">{title}</h2>
       </div>
-      {children}
+      <div className="p-4 flex-1 min-w-0">{children}</div>
     </section>
   );
 }
@@ -187,7 +184,9 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-[1400px] mx-auto px-4 py-8">
+        {/* Steps 1–2 keep the original (narrower) layout */}
+        <div className="max-w-5xl mx-auto">
         {/* Hero */}
         {!result && (
           <div className="text-center max-w-3xl mx-auto mb-10 fade-up">
@@ -266,48 +265,70 @@ export default function Home() {
           </div>
         )}
 
-        {/* Results */}
-        {result && opt && rec && (
-          <div className="space-y-5">
-            <AgentTrace trace={result.trace} steps={result.steps} model={result.model} lang={lang.toLowerCase()} />
+        </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: t.mEui, val: rec.design.f1_eui, unit: t.uEui, color: 'blue', icon: '⚡',
-                  sub: `↓ ${Math.round((1 - rec.design.f1_eui / baseEui) * 100)}% ${t.reduction}` },
-                { label: t.mLcc, val: rec.design.f2_lcc, unit: t.uLcc, color: 'indigo', icon: '💰', sub: '25-yr NPV' },
-                { label: t.mWlc, val: rec.design.f3_wlc, unit: t.uWlc, color: 'cyan', icon: '🌿', sub: 'embodied + ops' },
-                { label: t.mCapex, val: `$${(rec.design.capex / 1000).toFixed(0)}k`, unit: t.uCapex, color: 'amber', icon: '🏗️', sub: '' },
-              ].map((m) => {
-                const s = METRIC_STYLE[m.color];
-                return (
-                  <div key={m.label} className="card-grad bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-200/70 dark:ring-slate-800 shadow-sm p-4 fade-up">
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <span className={`w-7 h-7 rounded-lg ${s.chip} flex items-center justify-center text-sm`}>{m.icon}</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">{m.label}</span>
+        {/* Results — step-3 "cyber" dashboard (wider) */}
+        {result && opt && rec && (() => {
+          const lc = lang.toLowerCase();
+          const radarTitle = lang === 'VI' ? 'So sánh đa mục tiêu' : lang === 'KO' ? '다목적 비교' : 'Multi-objective comparison';
+          const netZeroTitle = lang === 'VI' ? 'Lộ trình Net-Zero 2050' : lang === 'KO' ? '넷제로 2050 경로' : 'Net-Zero 2050 pathway';
+          const buildingTitle = lang === 'VI' ? 'Mô hình tòa nhà' : lang === 'KO' ? '건물 모델' : 'Building model';
+          const baseTxt = lang === 'VI' ? 'gốc' : lang === 'KO' ? '기준' : 'base';
+          const base = opt.baseline;
+          const kpis = [
+            { icon: 'bolt', label: t.mEui, val: rec.design.f1_eui, unit: t.uEui, color: '#00e5ff', sub: `${baseTxt} ${base.f1_eui} · ↓${Math.round((1 - rec.design.f1_eui / baseEui) * 100)}%` },
+            { icon: 'payments', label: t.mLcc, val: rec.design.f2_lcc, unit: t.uLcc, color: '#dae2fd', sub: `${baseTxt} ${base.f2_lcc} · NPV 25y` },
+            { icon: 'eco', label: t.mWlc, val: rec.design.f3_wlc, unit: t.uWlc, color: '#00e5ff', sub: `${baseTxt} ${base.f3_wlc}` },
+            { icon: 'construction', label: t.mCapex, val: `$${(rec.design.capex / 1000).toFixed(0)}k`, unit: t.uCapex, color: '#f3bf26', sub: '' },
+          ];
+          return (
+            <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-surface text-on-surface"
+              style={{ fontFamily: '"Hanken Grotesk", Inter, system-ui, sans-serif' }}>
+              {/* KPI strip */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {kpis.map((m) => (
+                  <div key={m.label} className="cyber-border bg-surface-container rounded-xl p-4 relative overflow-hidden fade-up">
+                    <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full blur-xl" style={{ background: `${m.color}10` }} />
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="material-symbols-outlined text-[18px]" style={{ color: m.color }}>{m.icon}</span>
+                      <span className="text-[10px] uppercase tracking-wider text-on-surface-variant font-mono">{m.label}</span>
                     </div>
-                    <div className={`text-2xl font-bold ${s.text}`}>{m.val}</div>
-                    <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{m.unit}{m.sub ? ` · ${m.sub}` : ''}</div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-bold font-mono tracking-tight" style={{ color: m.color }}>{m.val}</span>
+                      <span className="text-xs text-secondary font-mono">{m.unit}</span>
+                    </div>
+                    {m.sub && <div className="text-[11px] text-on-surface-variant font-mono mt-1">{m.sub}</div>}
                   </div>
-                );
-              })}
+                ))}
+              </div>
+
+              {/* Bento grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <CyberCard icon="scatter_plot" title={t.pareto} className="lg:col-span-8"><ParetoChart opt={opt} labels={opt.objective_labels} /></CyberCard>
+                <CyberCard icon="apartment" title={buildingTitle} className="lg:col-span-4"><BuildingViz floors={result.building.floors} area={result.building.area} btype={result.building.btype} x={rec.design.x} lang={lc} /></CyberCard>
+
+                <CyberCard icon="psychology" title={t.recoTitle} className="lg:col-span-8"><Recommendation narrative={result.narrative} lang={lc} /></CyberCard>
+                <CyberCard icon="radar" title={radarTitle} className="lg:col-span-4"><RadarChart opt={opt} lang={lc} /></CyberCard>
+
+                <CyberCard icon="insights" title={t.xaiTitle} className="lg:col-span-4"><XAIPanel xai={rec.xai} lang={lc} /></CyberCard>
+                <CyberCard icon="verified_user" title={t.compTitle} className="lg:col-span-8"><CompliancePanel c={rec.compliance} lang={lc} /></CyberCard>
+
+                <CyberCard icon="show_chart" title={netZeroTitle} className="lg:col-span-12">
+                  <ForecastChart baseEui={baseEui} postEui={rec.design.f1_eui} lang={lc} />
+                </CyberCard>
+
+                <div className="lg:col-span-12">
+                  <AgentTrace trace={result.trace} steps={result.steps} model={result.model} lang={lc} />
+                </div>
+              </div>
+
+              <button onClick={reset}
+                className="self-start px-4 py-2 rounded-lg border border-outline-variant bg-surface-container hover:bg-surface-container-high text-on-surface-variant text-sm font-mono transition flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">restart_alt</span>{t.reset}
+              </button>
             </div>
-
-            <Panel icon="📊" title={t.pareto}><ParetoChart opt={opt} labels={opt.objective_labels} /></Panel>
-
-            <Panel icon="🤖" title={t.recoTitle}>
-              <Recommendation narrative={result.narrative} lang={lang.toLowerCase()} />
-            </Panel>
-
-            <Panel icon="🔍" title={t.xaiTitle}><XAIPanel xai={rec.xai} lang={lang.toLowerCase()} /></Panel>
-
-            <Panel icon="🛡️" title={t.compTitle}><CompliancePanel c={rec.compliance} lang={lang.toLowerCase()} /></Panel>
-
-            <button onClick={reset} className="w-full py-3 bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium rounded-xl text-sm transition-colors">
-              ← {t.reset}
-            </button>
-          </div>
-        )}
+          );
+        })()}
 
         <footer className="mt-12 pb-6 text-center text-xs text-slate-400 dark:text-slate-500">
           <span className="inline-flex items-center gap-1.5">

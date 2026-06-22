@@ -83,6 +83,7 @@ export interface XaiResult {
 export interface OptimizeResult {
   n_solutions: number;
   solutions: ParetoSolution[];
+  baseline: { f1_eui: number; f2_lcc: number; f3_wlc: number; capex: number };
   recommended_index: number;
   extremes: { min_eui: number; min_lcc: number; min_wlc: number };
   measures: Array<{ key: string; name: string }>;

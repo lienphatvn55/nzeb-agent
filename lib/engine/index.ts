@@ -61,9 +61,13 @@ export function runOptimize(b: Building, popSize = 92, nGen = 60): OptimizeResul
     xai: explain(b, recX) as XaiResult,
   };
 
+  // Baseline (no-retrofit) design, for "original vs recommended" comparison.
+  const base = evaluate(b, MEASURE_KEYS.map(() => 0));
+
   return {
     n_solutions: solutions.length,
     solutions,
+    baseline: { f1_eui: r(base.f1_eui), f2_lcc: r(base.f2_lcc), f3_wlc: r(base.f3_wlc), capex: 0 },
     recommended_index: recommendedIndex,
     extremes: { min_eui: argmin(0), min_lcc: argmin(1), min_wlc: argmin(2) },
     measures: MEASURES.map((m) => ({ key: m.key, name: m.name_en })),
